@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Aetherion™ Live Demo</title>
+    <style>
+        body { font-family: 'Consolas', monospace; background-color: #1a1a1a; color: #e0e0e0; padding: 20px; }
+        h1 { color: #4CAF50; border-bottom: 2px solid #4CAF50; }
+        #status { font-size: 1.2em; margin-bottom: 20px; }
+        #container { display: flex; flex-wrap: wrap; gap: 20px; }
+        #main-controls { flex: 1; min-width: 300px; }
+        #result-display { flex: 2; min-width: 400px; }
+        #alerts { background-color: #2a2a2a; border: 1px solid #444; border-radius: 5px; padding: 15px; height: 60vh; overflow-y: scroll; }
+        .message { padding: 5px; border-radius: 3px; margin-bottom: 5px; }
+        .alert-msg { background-color: #ff4d4d; color: #ffffff; font-weight: bold; }
+        .status-msg { color: #999999; }
+        #upload-section { margin-top: 20px; padding: 10px; background-color: #2a2a2a; border-radius: 5px; }
+        #resultImage { width: 100%; max-width: 800px; margin-top: 20px; border: 2px solid #4CAF50; border-radius: 5px; display: none; }
+    </style>
+</head>
+<body>
+
+    <h1>Aetherion™ Live Demo Dashboard</h1>
+    <div id="status">✅ System Ready. Upload an image to test.</div>
+
+    <div id="container">
+        
+        <div id="main-controls">
+            <div id="upload-section">
+                <h3>Test Your Model:</h3>
+                <input type="file" id="fileInput" accept="image/*">
+                <button onclick="uploadImage()">Run Detection</button>
+            </div>
+            <h3>Live Event Log</h3>
+            <div id="alerts"></div>
+        </div>
+
+        <div id="result-display">
+            <h3>Detection Result</h3>
+            <img id="resultImage" src="" alt="Detection Result" />
+        </div>
+
+    </div>
+
+    <script>
+        const statusDiv = document.getElementById('status');
+        const alertsDiv = document.getElementById('alerts');
+        
+        // --- This function adds messages to the log ---
+        function addMessageToLog(message) {
+            const messageElement = document.createElement('div');
+            messageElement.className = 'message';
+            
+            if (message.startsWith("ALERT")) {
+                messageElement.classList.add('alert-msg');
+            } else {
+                messageElement.classList.add('status-msg');
+            }
+            messageElement.textContent = message;
+            alertsDiv.appendChild(messageElement);
+            alertsDiv.scrollTop = alertsDiv.scrollHeight;
+        }
+
+        // --- This function handles the file upload ---
+        function uploadImage() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            const imgElement = document.getElementById('resultImage');
+            
+            if (!file) {
+                alert("Please select a file first.");
+                return;
+            }
+
+            alertsDiv.innerHTML = ""; // Clear old log messages
+
+            const formData = new FormData();
+            formData.append("file", file);
+
+            fetch("http://127.0.0.1:8000/upload_and_detect/", {
+                method: "POST",
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log("Upload success:", data);
+                
+                // Display the image
+                if (data.image_data) {
+                    imgElement.src = data.image_data;
+                    imgElement.style.display = 'block';
+                }
+
+                // Add log messages from the response
+                if (data.log_messages && Array.isArray(data.log_messages)) {
+                    data.log_messages.forEach(message => {
+                        addMessageToLog(message);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error("Upload error:", error);
+                addMessageToLog("ERROR: Failed to fetch from server. Check console.");
+            });
+        }
+    </script>
+</body>
+</html>
